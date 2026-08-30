@@ -76,7 +76,7 @@ async def main():
         reconcile_task.cancel()
         try:
             await reconcile_task
-        except Exception:
+        except (asyncio.CancelledError, Exception):
             pass
         await manager.stop_all()
 

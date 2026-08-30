@@ -199,35 +199,35 @@ class BotManager:
         inst["task"].cancel()
         try:
             await inst["task"]
-        except Exception:
+        except (asyncio.CancelledError, Exception):
             pass
         reminder_task = inst.get("reminder_task")
         if reminder_task:
             reminder_task.cancel()
             try:
                 await reminder_task
-            except Exception:
+            except (asyncio.CancelledError, Exception):
                 pass
         backup_task = inst.get("backup_task")
         if backup_task:
             backup_task.cancel()
             try:
                 await backup_task
-            except Exception:
+            except (asyncio.CancelledError, Exception):
                 pass
         cache_refresh_task = inst.get("cache_refresh_task")
         if cache_refresh_task:
             cache_refresh_task.cancel()
             try:
                 await cache_refresh_task
-            except Exception:
+            except (asyncio.CancelledError, Exception):
                 pass
         temp_msg_task = inst.get("temp_msg_task")
         if temp_msg_task:
             temp_msg_task.cancel()
             try:
                 await temp_msg_task
-            except Exception:
+            except (asyncio.CancelledError, Exception):
                 pass
         try:
             await inst["bot"].session.close()
@@ -264,7 +264,10 @@ class BotManager:
             if not tasks:
                 await asyncio.sleep(1)
                 continue
-            done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+            # FIRST_EXCEPTION فقط با exception برمی گردد؛ اگر polling یک بات
+            # بدون exception تمام شود، تا توقف همه ی بات ها پنهان می ماند.
+            # هر پایان task باید همان لحظه بررسی و پاک سازی شود.
+            done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
             for d in done:
                 exc = d.exception() if not d.cancelled() else None
                 token = next((t for t, inst in self.instances.items() if inst["task"] is d), None)

@@ -3,7 +3,7 @@ tg.ready();
 tg.expand();
 try { tg.setHeaderColor("#0a0e17"); tg.setBackgroundColor("#0a0e17"); } catch (e) {}
 
-const initData = tg.initData; // برای هدر X-Init-Data به بک‌اند فرستاده می‌شود
+const initData = tg.initData || ""; // برای هدر X-Init-Data به بک‌اند فرستاده می‌شود
 const content = document.getElementById("content");
 
 // شناسه‌ی نماینده (اگر مینی‌اپ از یک بات نمایندگی باز شده باشد) - از URL خوانده می‌شود
@@ -147,6 +147,11 @@ function notify(message) {
 }
 
 async function api(path, options = {}) {
+  // باز کردن لینک در مرورگر معمولی initData ندارد. پیش از ارسال درخواست های
+  // هم زمان، خطای قابل فهم به کاربر می دهیم و لاگ سرور را با 401 پر نمی کنیم.
+  if (!initData) {
+    throw new Error("این فروشگاه را از دکمه «فروشگاه» داخل تلگرام باز کن.");
+  }
   const res = await fetch(withTenant(path), {
     ...options,
     headers: { "Content-Type": "application/json", "X-Init-Data": initData, ...(options.headers || {}) },
@@ -194,6 +199,9 @@ function showForceJoinGate(info) {
 
 // آپلود فایل (مولتی‌پارت) - بدون Content-Type دستی تا مرورگر boundary را ست کند
 async function apiUpload(path, formData) {
+  if (!initData) {
+    throw new Error("این فروشگاه را از دکمه «فروشگاه» داخل تلگرام باز کن.");
+  }
   const res = await fetch(withTenant(path), {
     method: "POST",
     headers: { "X-Init-Data": initData },

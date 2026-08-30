@@ -42,12 +42,35 @@ def validate_init_data(init_data: str, bot_token: str, max_age_seconds: int = 86
         return None
 
     auth_date = pairs.get("auth_date")
-    if auth_date:
-        import time
-        if time.time() - int(auth_date) > max_age_seconds:
-            return None
+    if not auth_date:
+        logger.warning("initData بدون فیلد auth_date است.")
+        return None
 
-    import json
-    if "user" in pairs:
-        pairs["user"] = json.loads(pairs["user"])
+    try:
+        import time
+        auth_timestamp = int(auth_date)
+    except (TypeError, ValueError):
+        logger.warning("auth_date در initData معتبر نیست: %r", auth_date)
+        return None
+
+    # درخواست های آینده نگر یا خیلی قدیمی نباید پذیرفته شوند. تلگرام همیشه
+    # timestamp ثانیه ای فعلی می فرستد؛ یک تلورانس کوچک برای اختلاف ساعت کافی است.
+    now = time.time()
+    if auth_timestamp > now + 60 or now - auth_timestamp > max_age_seconds:
+        logger.warning("auth_date در initData خارج از بازه ی مجاز است.")
+        return None
+
+    if "user" not in pairs:
+        logger.warning("initData بدون فیلد user است.")
+        return None
+    try:
+        import json
+        user = json.loads(pairs["user"])
+    except (TypeError, ValueError, json.JSONDecodeError):
+        logger.warning("فیلد user در initData قابل پارس نیست.")
+        return None
+    if not isinstance(user, dict) or not isinstance(user.get("id"), int):
+        logger.warning("فیلد user در initData معتبر نیست.")
+        return None
+    pairs["user"] = user
     return pairs
